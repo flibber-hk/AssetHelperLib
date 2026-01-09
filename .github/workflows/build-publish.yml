@@ -32,6 +32,19 @@ jobs:
           VERSION=$(dotnet build AssetHelperLib/AssetHelperLib.csproj -getProperty:PackageVersion)
           echo Version is $VERSION
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Upload Build Artifacts (DLLs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: "AssetHelperLib/bin/Release/**/*.dll"
+
+      - name: Upload NuGet Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: nuget/*.nupkg
+          
       # attempts to publish to NuGet on any push to main. Skips already-published versions.
       - name: NuGet Login
         id: login
