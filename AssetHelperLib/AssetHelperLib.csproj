@@ -2,11 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
+    <Version>0.9.0</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <EnableNETAnalyzers>True</EnableNETAnalyzers>
     <AnalysisMode>recommended</AnalysisMode>
+    <PathMap Condition="'$(Configuration)' == 'Release'">$(MSBuildProjectDirectory)=/</PathMap>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>AssetHelperLib</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -14,6 +17,7 @@
     <!--<PackageIcon>icon.png</PackageIcon>-->
     <PackageId>AssetHelperLib</PackageId>
     <RepositoryUrl>https://github.com/flibber-hk/AssetHelperLib</RepositoryUrl>
+    <Description>Scene Asset repacking library built upon AssetsTools.NET.</Description>
   </PropertyGroup>
 
   <ItemGroup>
