@@ -35,13 +35,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           
       - name: Upload Build Artifacts (DLLs)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: build-output
           path: "AssetHelperLib/bin/Release/**/*.dll"
 
       - name: Upload NuGet Package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: nuget-package
           path: nuget/*.nupkg
