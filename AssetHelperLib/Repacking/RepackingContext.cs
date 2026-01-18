@@ -38,7 +38,7 @@ public class RepackingContext
     /// <summary>
     /// The Game Object Lookup for the current repacking operation.
     /// </summary>
-    public GameObjectLookup? GoLookup { get; set; }
+    public GameObjectLookup? GameObjLookup { get; set; }
 
     private AssetDependencies? _assetDeps;
 

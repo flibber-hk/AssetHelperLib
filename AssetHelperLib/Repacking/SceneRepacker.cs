@@ -110,6 +110,9 @@ public abstract class SceneRepacker
     /// <summary>
     /// Run the repacking operation.
     /// </summary>
+    /// <param name="ctx">Context for the current repacking operation.</param>
+    /// <param name="repackingParams">Parameters for the current repacking operation.</param>
+    /// <param name="outData">Data about the repacked bundle.</param>
     protected abstract void Run(
         RepackingContext ctx,
         RepackingParams repackingParams,
