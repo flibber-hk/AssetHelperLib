@@ -1,7 +1,6 @@
 ﻿using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using AssetHelperLib.Util;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using GameObjectInfo = AssetHelperLib.BundleTools.GameObjectLookup.GameObjectInfo;
