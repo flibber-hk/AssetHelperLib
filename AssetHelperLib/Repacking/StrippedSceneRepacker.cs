@@ -6,8 +6,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using GameObjectInfo = AssetHelperLib.BundleTools.GameObjectLookup.GameObjectInfo;
+using AssetHelperLib.BundleTools;
 
-namespace AssetHelperLib.BundleTools.Repacking;
+namespace AssetHelperLib.Repacking;
 
 /// <summary>
 /// Class that repacks scenes by taking a minimal set of objects in the scene that allow

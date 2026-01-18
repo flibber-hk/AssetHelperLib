@@ -5,8 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using AssetHelperLib.BundleTools;
 
-namespace AssetHelperLib.BundleTools.Repacking;
+namespace AssetHelperLib.Repacking;
 
 /// <summary>
 /// Repacker that creates a shallow bundle; that is, a bundle with no objects but with the metadata to load

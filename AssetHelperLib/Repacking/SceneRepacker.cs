@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
+﻿using AssetHelperLib.BundleTools;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace AssetHelperLib.BundleTools.Repacking;
+namespace AssetHelperLib.Repacking;
 
 /// <summary>
 /// Base class for repacking strategies.
@@ -67,7 +68,7 @@ public abstract class SceneRepacker
         )
     {
         RepackedBundleData outData = new();
-        outData.RepackStrategy = this.RepackStrategy;
+        outData.RepackStrategy = RepackStrategy;
 
         GetDefaultBundleNames(sceneBundlePath, objectNames, outBundlePath, out string cabName, out string bundleName);
         outData.CabName = cabName;
