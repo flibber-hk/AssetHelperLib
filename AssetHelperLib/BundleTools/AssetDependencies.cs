@@ -26,13 +26,15 @@ public class AssetDependencies(AssetsManager mgr, AssetsFileInstance afileInst, 
     /// <param name="FileId"></param>
     /// <param name="PathId"></param>
     /// <param name="TypeName">The name of the type (including PPtr&lt;...&gt;).</param>
-    public record PPtrData(int FileId, long PathId, string? TypeName);
+    public record PPtrData(int FileId, long PathId, string TypeName);
 
     /// <summary>
     /// Record representing a collection of PPtrs associated with an asset.
     /// </summary>
     /// <param name="InternalPaths">Path IDs within the current file.</param>
-    /// <param name="ExternalPaths">Pairs (file ID, path ID) external to the current file.</param>
+    /// <param name="ExternalPaths">Dependency records external to the current file.
+    /// There may be duplicates in this set if the same dependency is pointed at
+    /// as two different types (e.g. once as a Component and once as a specified MonoBehaviour).</param>
     public record ChildPPtrs(HashSet<long> InternalPaths, HashSet<PPtrData> ExternalPaths)
     {
         /// <summary>
@@ -44,7 +46,7 @@ public class AssetDependencies(AssetsManager mgr, AssetsFileInstance afileInst, 
         /// <summary>
         /// Add a new PPtr to the collection.
         /// </summary>
-        public bool Add(int fileId, long pathId, string? typeName)
+        public bool Add(int fileId, long pathId, string typeName)
         {
             if (pathId == 0) return false;
             if (fileId == 0) return InternalPaths.Add(pathId);

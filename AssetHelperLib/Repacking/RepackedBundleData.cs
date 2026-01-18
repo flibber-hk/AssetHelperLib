@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
-namespace AssetHelperLib.BundleTools;
+namespace AssetHelperLib.Repacking;
 
 /// <summary>
 /// Data about a repacked bundle.
