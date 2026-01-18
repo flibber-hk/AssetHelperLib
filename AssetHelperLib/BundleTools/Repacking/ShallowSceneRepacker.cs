@@ -144,11 +144,11 @@ public class ShallowSceneRepacker : SceneRepacker
 
             // Collect dependent pptrs
             AssetDependencies.ChildPPtrs childPPtrs = dependencies.FindBundleDeps(goData.Info.PathId);
-            foreach ((int fileId, long pathId) in childPPtrs.ExternalPaths)
+            foreach (AssetDependencies.PPtrData data in childPPtrs.ExternalPaths)
             {
                 AssetTypeValueField depPtr = ValueBuilder.DefaultValueFieldFromArrayTemplate(bundleData["m_PreloadTable.Array"]);
-                depPtr["m_FileID"].AsInt = 1 + fileId;
-                depPtr["m_PathID"].AsLong = pathId;
+                depPtr["m_FileID"].AsInt = 1 + data.FileId;
+                depPtr["m_PathID"].AsLong = data.PathId;
                 preloadPtrs.Add(depPtr);
             }
 

@@ -159,11 +159,11 @@ public class StrippedSceneRepacker : SceneRepacker
 
             int start = preloadPtrs.Count;
 
-            foreach ((int fileId, long pathId) in deps.ExternalPaths)
+            foreach (AssetDependencies.PPtrData data in deps.ExternalPaths)
             {
                 AssetTypeValueField depPtr = ValueBuilder.DefaultValueFieldFromArrayTemplate(iBundleData["m_PreloadTable.Array"]);
-                depPtr["m_FileID"].AsInt = fileId;
-                depPtr["m_PathID"].AsLong = pathId;
+                depPtr["m_FileID"].AsInt = data.FileId;
+                depPtr["m_PathID"].AsLong = data.PathId;
                 preloadPtrs.Add(depPtr);
             }
 

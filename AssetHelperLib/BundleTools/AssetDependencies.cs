@@ -1,7 +1,6 @@
 ﻿using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using System.Collections.Generic;
-using PPtrData = (int fileId, long pathId);
 
 namespace AssetHelperLib.BundleTools;
 
@@ -22,6 +21,14 @@ public class AssetDependencies(AssetsManager mgr, AssetsFileInstance afileInst, 
     }
 
     /// <summary>
+    /// Record representing a PPtr in a bundle.
+    /// </summary>
+    /// <param name="FileId"></param>
+    /// <param name="PathId"></param>
+    /// <param name="TypeName">The name of the type (including PPtr&lt;...&gt;).</param>
+    public record PPtrData(int FileId, long PathId, string? TypeName);
+
+    /// <summary>
     /// Record representing a collection of PPtrs associated with an asset.
     /// </summary>
     /// <param name="InternalPaths">Path IDs within the current file.</param>
@@ -33,19 +40,20 @@ public class AssetDependencies(AssetsManager mgr, AssetsFileInstance afileInst, 
         /// </summary>
         /// <returns></returns>
         public static ChildPPtrs CreateNew() => new([], []);
-        
+
         /// <summary>
         /// Add a new PPtr to the collection.
         /// </summary>
-        public bool Add(int fileId, long pathId)
+        public bool Add(int fileId, long pathId, string? typeName)
         {
             if (pathId == 0) return false;
             if (fileId == 0) return InternalPaths.Add(pathId);
-            return ExternalPaths.Add((fileId, pathId));
+            return ExternalPaths.Add(new(fileId, pathId, typeName));
         }
 
-        /// <inheritdoc cref="Add(int, long)" />
-        public bool Add(AssetTypeValueField valueField) => Add(valueField["m_FileID"].AsInt, valueField["m_PathID"].AsLong);
+        /// <inheritdoc cref="Add(int, long, string)" />
+        public bool Add(AssetTypeValueField valueField, string typeName)
+            => Add(valueField["m_FileID"].AsInt, valueField["m_PathID"].AsLong, typeName);
     }
 
 
@@ -95,11 +103,11 @@ public class AssetDependencies(AssetsManager mgr, AssetsFileInstance afileInst, 
         {
             AssetTypeValueField tfValueField = _mgr.GetBaseField(_afileInst, info);
 
-            childPPtrs.Add(tfValueField["m_GameObject"]);
+            childPPtrs.Add(tfValueField["m_GameObject"], "PPtr<GameObject>");
 
             foreach (AssetTypeValueField childVf in tfValueField["m_Children.Array"].Children)
             {
-                childPPtrs.Add(childVf);
+                childPPtrs.Add(childVf, "PPtr<Transform>");
             }
             
             return _immediateDeps[assetPathId] = childPPtrs;
@@ -114,7 +122,7 @@ public class AssetDependencies(AssetsManager mgr, AssetsFileInstance afileInst, 
             if (!typeName.StartsWith("PPtr<")) continue;
 
             AssetTypeValueField valueField = atvIterator.ReadValueField();
-            childPPtrs.Add(valueField);
+            childPPtrs.Add(valueField, typeName);
         }
 
         return _immediateDeps[assetPathId] = childPPtrs;
