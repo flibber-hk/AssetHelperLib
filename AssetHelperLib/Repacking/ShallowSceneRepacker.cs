@@ -1,4 +1,7 @@
-﻿using AssetsTools.NET;
+﻿// disabled due to rework
+#if false
+
+using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using AssetHelperLib.Util;
 using System;
@@ -189,3 +192,5 @@ public class ShallowSceneRepacker : SceneRepacker
         mgr.UnloadAll();
     }
 }
+
+#endif
