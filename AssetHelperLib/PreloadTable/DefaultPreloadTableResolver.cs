@@ -12,10 +12,10 @@ namespace AssetHelperLib.PreloadTable;
 public sealed class DefaultPreloadTableResolver : BasePreloadTableResolver
 {
     /// <inheritdoc />
-    public override HashSet<(int fileId, long pathId)> BuildPreloadTable(long assetPathId, RepackingContext ctx)
+    public override void BuildPreloadTable(long assetPathId, RepackingContext ctx, ref HashSet<(int fileId, long pathId)> tableInfos)
     {
         HashSet<PPtrData> deps = ctx.AssetDeps.FindBundleDeps(assetPathId).ExternalPaths;
 
-        return [.. deps.Select(dep => (dep.FileId, dep.PathId))];
+        tableInfos.UnionWith(deps.Select(dep => (dep.FileId, dep.PathId)));
     }
 }

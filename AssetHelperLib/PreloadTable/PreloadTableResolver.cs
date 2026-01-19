@@ -13,14 +13,14 @@ public sealed class PreloadTableResolver(List<BasePreloadTableResolver> resolver
     private readonly List<BasePreloadTableResolver> _resolvers = resolvers;
 
     /// <inheritdoc />
-    public override HashSet<(int fileId, long pathId)> BuildPreloadTable(long assetPathId, RepackingContext ctx)
+    public override void BuildPreloadTable(long assetPathId, RepackingContext ctx, ref HashSet<(int fileId, long pathId)> tableInfos)
     {
         HashSet<(int fileId, long pathId)> data = [];
         foreach (BasePreloadTableResolver resolver in _resolvers)
         {
-            data.UnionWith(resolver.BuildPreloadTable(assetPathId, ctx));
+            resolver.BuildPreloadTable(assetPathId, ctx, ref data);
         }
 
-        return data;
+        tableInfos.UnionWith(data);
     }
 }

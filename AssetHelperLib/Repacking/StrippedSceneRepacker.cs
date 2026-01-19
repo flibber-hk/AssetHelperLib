@@ -147,7 +147,8 @@ public class StrippedSceneRepacker(PreloadTableResolver? preloadResolver = null)
             GameObjectInfo cgInfo = ctx.GameObjLookup.LookupName(containerGo);
             long cgPathId = cgInfo.GameObjectPathId;
 
-            HashSet<PPtrInfo> deps = _preloadResolver.BuildPreloadTable(cgPathId, ctx);
+            HashSet<PPtrInfo> deps = [];
+            _preloadResolver.BuildPreloadTable(cgPathId, ctx, ref deps);
 
             int start = preloadPtrs.Count;
 
