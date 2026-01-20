@@ -13,20 +13,26 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: production
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - uses: actions/checkout@v6
+      
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.x
+          
       - name: Restore Dependencies
         run: dotnet restore
+        
       - name: Build
         run: dotnet build -c Release
+        
       - name: Pack
         run: dotnet pack -o nuget/
+        
       - name: Get Version
         id: version
         run: |-
@@ -45,27 +51,38 @@ jobs:
         with:
           name: nuget-package
           path: nuget/*.nupkg
-          
-      # attempts to publish to NuGet on any push to main. Skips already-published versions.
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Download NuGet Package
+        uses: actions/download-artifact@v6
+        with:
+          name: nuget-package
+          path: nuget/
+
       - name: NuGet Login
         id: login
-        if: github.event_name == 'push'
         uses: NuGet/login@v1
         with:
           user: ${{ secrets.NUGET_USER }}
+
       - name: Publish NuGet
         id: publish
-        if: github.event_name == 'push'
         run: |-
           dotnet nuget push nuget/*.nupkg \
             --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json
         continue-on-error: true
+
       - name: Create Release
-        if: github.event_name == 'push' && steps.publish.outcome == 'success'
+        if: steps.publish.outcome == 'success'
         uses: softprops/action-gh-release@v2
         with:
           draft: false
           generate_release_notes: true
-          tag_name: v${{ steps.version.outputs.version }}
-          
+          tag_name: v${{ needs.build.outputs.version }}
