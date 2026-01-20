@@ -16,10 +16,23 @@ namespace AssetHelperLib.Repacking;
 /// 
 /// Any game objects whose parents are not needed will be deparented.
 /// </summary>
-public class StrippedSceneRepacker(PreloadTableResolver? preloadResolver = null) : SceneRepacker
+public class StrippedSceneRepacker : SceneRepacker
 {
-    private BasePreloadTableResolver _preloadResolver = preloadResolver != null ? preloadResolver : new DefaultPreloadTableResolver();
+    private BasePreloadTableResolver _preloadResolver;
 
+    /// <summary>
+    /// Create an instance of this class with the default settings.
+    /// </summary>
+    public StrippedSceneRepacker() : this(new DefaultPreloadTableResolver()) { }
+
+    /// <summary>
+    /// Create an instance of this class with the specified preload resolver.
+    /// </summary>
+    public StrippedSceneRepacker(BasePreloadTableResolver preloadResolver)
+    {
+        _preloadResolver = preloadResolver;
+    }
+    
     /// <inheritdoc />
     protected override void Run(RepackingContext ctx, RepackingParams repackingParams, RepackedBundleData outData)
     {
