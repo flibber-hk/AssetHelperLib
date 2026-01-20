@@ -1,13 +1,14 @@
 ﻿using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using AssetHelperLib.Util;
-using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using GameObjectInfo = AssetHelperLib.BundleTools.GameObjectLookup.GameObjectInfo;
+using AssetHelperLib.BundleTools;
+using AssetHelperLib.PreloadTable;
+using PPtrInfo = (int fileId, long pathId);
 
-namespace AssetHelperLib.BundleTools.Repacking;
+namespace AssetHelperLib.Repacking;
 
 /// <summary>
 /// Class that repacks scenes by taking a minimal set of objects in the scene that allow
@@ -17,36 +18,38 @@ namespace AssetHelperLib.BundleTools.Repacking;
 /// </summary>
 public class StrippedSceneRepacker : SceneRepacker
 {
-    /// <inheritdoc />
-    public override void Repack(string sceneBundlePath, List<string> objectNames, string containerPrefix, string outBundlePath, ref RepackedBundleData outData)
+    private BasePreloadTableResolver _preloadResolver;
+
+    /// <summary>
+    /// Create an instance of this class with the default settings.
+    /// </summary>
+    public StrippedSceneRepacker() : this(new DefaultPreloadTableResolver()) { }
+
+    /// <summary>
+    /// Create an instance of this class with the specified preload resolver.
+    /// </summary>
+    public StrippedSceneRepacker(BasePreloadTableResolver preloadResolver)
     {
-        objectNames = objectNames.GetHighestNodes();
+        _preloadResolver = preloadResolver;
+    }
+    
+    /// <inheritdoc />
+    protected override void Run(RepackingContext ctx, RepackingParams repackingParams, RepackedBundleData outData)
+    {
+        List<string> objectNames = repackingParams.ObjectNames.GetHighestNodes();
 
-        AssetsManager mgr = BundleUtils.CreateDefaultManager();
+        // Setup GO lookup
+        ctx.GameObjLookup = GameObjectLookup.CreateFromFile(ctx.SceneAssetsManager, ctx.MainAssetsFileInstance);
 
-        using MemoryStream ms = new(File.ReadAllBytes(sceneBundlePath));
-        BundleFileInstance sceneBun = mgr.LoadBundleFile(ms, sceneBundlePath);
-        
-        if (!mgr.TryFindAssetsFiles(sceneBun, out BundleUtils.SceneBundleInfo sceneBundleInfo))
-        {
-            throw new NotSupportedException($"Could not find assets files for {sceneBundlePath}");
-        }
-
-        AssetsFileInstance mainSceneAfileInst = mgr.LoadAssetsFileFromBundle(sceneBun, sceneBundleInfo.mainAfileInstIndex);
-        AssetsFileInstance sceneSharedAssetsFileInst = mgr.LoadAssetsFileFromBundle(sceneBun, sceneBundleInfo.sharedAssetsAfileIndex);
-        int mainAfileIdx = sceneBundleInfo.mainAfileInstIndex;
-
-        GameObjectLookup goLookup = GameObjectLookup.CreateFromFile(mgr, mainSceneAfileInst);
-
-        AssetDependencies dependencies = new(mgr, mainSceneAfileInst);
+        // Find internal deps, everything else can be stripped
         HashSet<long> includedPathIds = [];
 
         foreach (string objName in objectNames)
         {
-            if (goLookup.TryLookupName(objName, out GameObjectInfo? info))
+            if (ctx.GameObjLookup.TryLookupName(objName, out GameObjectInfo? info))
             {
                 includedPathIds.Add(info.GameObjectPathId);
-                includedPathIds.UnionWith(dependencies.FindBundleDeps(info.GameObjectPathId).InternalPaths);
+                includedPathIds.UnionWith(ctx.AssetDeps.FindBundleDeps(info.GameObjectPathId).InternalPaths);
             }
             else
             {
@@ -54,11 +57,11 @@ public class StrippedSceneRepacker : SceneRepacker
             }
         }
 
-        // Collect all game objects that are being included
+        // Collect all game objects
         List<string> includedGos = [];
         foreach (long pathId in includedPathIds)
         {
-            if (goLookup.TryLookupGameObject(pathId, out GameObjectInfo? info))
+            if (ctx.GameObjLookup.TryLookupGameObject(pathId, out GameObjectInfo? info))
             {
                 includedGos.Add(info.GameObjectName);
             }
@@ -83,11 +86,11 @@ public class StrippedSceneRepacker : SceneRepacker
         outData.NonRepackedAssets = missingObjects;
 
         // Strip all assets that are not needed
-        foreach (AssetFileInfo afileInfo in mainSceneAfileInst.file.AssetInfos.ToList())
+        foreach (AssetFileInfo afileInfo in ctx.MainAssetsFileInstance.file.AssetInfos.ToList())
         {
             if (!includedPathIds.Contains(afileInfo.PathId))
             {
-                mainSceneAfileInst.file.Metadata.RemoveAssetInfo(afileInfo);
+                ctx.MainAssetsFileInstance.file.Metadata.RemoveAssetInfo(afileInfo);
             }
         }
 
@@ -100,13 +103,13 @@ public class StrippedSceneRepacker : SceneRepacker
             while (includedPathIds.Contains(newOneAssetPathId))
             {
                 newOneAssetPathId--;
-            }            
+            }
         }
 
         long updatedPathId(long orig) => orig == 1 ? newOneAssetPathId : orig;
 
         // Deparent transforms which are now rooted
-        foreach (GameObjectInfo current in goLookup)
+        foreach (GameObjectInfo current in ctx.GameObjLookup)
         {
             if (!includedPathIds.Contains(current.TransformPathId))
             {
@@ -119,7 +122,7 @@ public class StrippedSceneRepacker : SceneRepacker
                 continue;
             }
 
-            if (!goLookup.TryLookupName(parentName, out GameObjectInfo? parentInfo))
+            if (!ctx.GameObjLookup.TryLookupName(parentName, out GameObjectInfo? parentInfo))
             {
                 Logging.LogWarning($"Unexpectedly failed to find {parentName} from {current.GameObjectName}");
                 continue;
@@ -131,15 +134,15 @@ public class StrippedSceneRepacker : SceneRepacker
             }
 
             // We now have to deparent the object
-            AssetFileInfo afInfo = mainSceneAfileInst.file.GetAssetInfo(current.TransformPathId);
-            AssetTypeValueField transformField = mgr.GetBaseField(mainSceneAfileInst, afInfo);
+            AssetFileInfo afInfo = ctx.MainAssetsFileInstance.file.GetAssetInfo(current.TransformPathId);
+            AssetTypeValueField transformField = ctx.SceneAssetsManager.GetBaseField(ctx.MainAssetsFileInstance, afInfo);
             transformField["m_Father.m_PathID"].AsLong = 0;
             afInfo.SetNewData(transformField);
         }
 
         // Set up the internal bundle
-        AssetFileInfo internalBundle = sceneSharedAssetsFileInst.file.GetAssetsOfType(AssetClassID.AssetBundle).First();
-        AssetTypeValueField iBundleData = mgr.GetBaseField(sceneSharedAssetsFileInst, internalBundle);
+        AssetFileInfo internalBundle = ctx.SharedAssetsFileInstance.file.GetAssetsOfType(AssetClassID.AssetBundle).First();
+        AssetTypeValueField iBundleData = ctx.SceneAssetsManager.GetBaseField(ctx.SharedAssetsFileInstance, internalBundle);
 
         // Set simple data
         iBundleData["m_Name"].AsString = outData.BundleName;
@@ -147,29 +150,32 @@ public class StrippedSceneRepacker : SceneRepacker
         iBundleData["m_IsStreamedSceneAssetBundle"].AsBool = false;
         iBundleData["m_SceneHashes.Array"].Children.Clear();
 
-        // Add objects to the container
+        // Set up the container
         List<AssetTypeValueField> preloadPtrs = [];
         List<AssetTypeValueField> newChildren = [];
         Dictionary<string, string> containerPaths = [];
 
         foreach (string containerGo in includedContainerGos)
         {
-            GameObjectInfo cgInfo = goLookup.LookupName(containerGo);
-            AssetDependencies.ChildPPtrs deps = dependencies.FindBundleDeps(cgInfo.GameObjectPathId);
+            GameObjectInfo cgInfo = ctx.GameObjLookup.LookupName(containerGo);
+            long cgPathId = cgInfo.GameObjectPathId;
+
+            HashSet<PPtrInfo> deps = [];
+            _preloadResolver.BuildPreloadTable(cgPathId, ctx, ref deps);
 
             int start = preloadPtrs.Count;
 
-            foreach (AssetDependencies.PPtrData data in deps.ExternalPaths)
+            foreach (PPtrInfo info in deps)
             {
                 AssetTypeValueField depPtr = ValueBuilder.DefaultValueFieldFromArrayTemplate(iBundleData["m_PreloadTable.Array"]);
-                depPtr["m_FileID"].AsInt = data.FileId;
-                depPtr["m_PathID"].AsLong = data.PathId;
+                depPtr["m_FileID"].AsInt = info.fileId;
+                depPtr["m_PathID"].AsLong = info.pathId;
                 preloadPtrs.Add(depPtr);
             }
 
             int count = preloadPtrs.Count - start;
 
-            string containerPath = $"{containerPrefix}/{containerGo}.prefab";
+            string containerPath = $"{repackingParams.ContainerPrefix}/{containerGo}.prefab";
             containerPaths[containerPath] = containerGo;
 
             AssetTypeValueField newChild = ValueBuilder.DefaultValueFieldFromArrayTemplate(iBundleData["m_Container.Array"]);
@@ -192,50 +198,54 @@ public class StrippedSceneRepacker : SceneRepacker
         {
             int redirectCount = 0;
 
-            AssetFileInfo toMove = mainSceneAfileInst.file.GetAssetInfo(1);
-            mainSceneAfileInst.file.Metadata.RemoveAssetInfo(toMove);
+            AssetFileInfo toMove = ctx.MainAssetsFileInstance.file.GetAssetInfo(1);
+            ctx.MainAssetsFileInstance.file.Metadata.RemoveAssetInfo(toMove);
             toMove.PathId = newOneAssetPathId;
-            mainSceneAfileInst.file.Metadata.AddAssetInfo(toMove);
+            ctx.MainAssetsFileInstance.file.Metadata.AddAssetInfo(toMove);
 
             foreach (long pathId in includedPathIds)
             {
                 if (pathId == 1) continue;
 
-                if (!dependencies.FindImmediateDeps(pathId).InternalPaths.Contains(1))
+                if (!ctx.AssetDeps.FindImmediateDeps(pathId).InternalPaths.Contains(1))
                 {
                     continue;
                 }
 
-                redirectCount += mgr.Redirect(mainSceneAfileInst, mainSceneAfileInst.file.GetAssetInfo(pathId), 1, newOneAssetPathId);
+                redirectCount += ctx.SceneAssetsManager.Redirect(
+                    ctx.MainAssetsFileInstance, ctx.MainAssetsFileInstance.file.GetAssetInfo(pathId), 1, newOneAssetPathId);
             }
 
-            int locRedirect = mgr.Redirect(mainSceneAfileInst, toMove, 1, newOneAssetPathId);  // Just in case
+            int locRedirect = ctx.SceneAssetsManager.Redirect(ctx.MainAssetsFileInstance, toMove, 1, newOneAssetPathId);  // Just in case
             Logging.LogInfo($"Redirected {redirectCount} references plus {locRedirect} self-references");
         }
 
         // Move updated internal bundle into the main assets file
         // Copy the asset bundle type tree from the shared assets to the main bundle
-        if (!mainSceneAfileInst.file.Metadata.TypeTreeTypes.Any(x => x.TypeId == (int)AssetClassID.AssetBundle))
+        if (!ctx.MainAssetsFileInstance.file.Metadata.TypeTreeTypes.Any(x => x.TypeId == (int)AssetClassID.AssetBundle))
         {
-            TypeTreeType t = sceneSharedAssetsFileInst.file.Metadata.TypeTreeTypes.First(x => x.TypeId == (int)AssetClassID.AssetBundle);
-            mainSceneAfileInst.file.Metadata.TypeTreeTypes.Add(t);
+            TypeTreeType t = ctx.SharedAssetsFileInstance.file.Metadata.TypeTreeTypes.First(x => x.TypeId == (int)AssetClassID.AssetBundle);
+            ctx.MainAssetsFileInstance.file.Metadata.TypeTreeTypes.Add(t);
         }
 
-        AssetFileInfo newInternalBundle = AssetFileInfo.Create(mainSceneAfileInst.file, mainAfileIdx, (int)AssetClassID.AssetBundle);
+        AssetFileInfo newInternalBundle = AssetFileInfo.Create(
+            ctx.MainAssetsFileInstance.file, ctx.SceneBundleInfo.mainAfileInstIndex, (int)AssetClassID.AssetBundle);
         newInternalBundle.SetNewData(iBundleData);
-        mainSceneAfileInst.file.Metadata.AddAssetInfo(newInternalBundle);
+        ctx.MainAssetsFileInstance.file.Metadata.AddAssetInfo(newInternalBundle);
 
-        sceneBun.file.BlockAndDirInfo.DirectoryInfos[mainAfileIdx].SetNewData(mainSceneAfileInst.file);
-        sceneBun.file.BlockAndDirInfo.DirectoryInfos[mainAfileIdx].Name = outData.CabName;
+        ctx.SceneBundleFileInstance.file.BlockAndDirInfo.DirectoryInfos[ctx.SceneBundleInfo.mainAfileInstIndex]
+            .SetNewData(ctx.MainAssetsFileInstance.file);
+        ctx.SceneBundleFileInstance.file.BlockAndDirInfo.DirectoryInfos[ctx.SceneBundleInfo.mainAfileInstIndex]
+            .Name = outData.CabName;
 
-        int tot = sceneBun.file.BlockAndDirInfo.DirectoryInfos.Count;
+        int tot = ctx.SceneBundleFileInstance.file.BlockAndDirInfo.DirectoryInfos.Count;
         for (int i = 0; i < tot; i++)
         {
-            if (i == mainAfileIdx) { continue; }
-            sceneBun.file.BlockAndDirInfo.DirectoryInfos[i].SetRemoved();
+            if (i == ctx.SceneBundleInfo.mainAfileInstIndex) { continue; }
+            ctx.SceneBundleFileInstance.file.BlockAndDirInfo.DirectoryInfos[i].SetRemoved();
         }
 
-        sceneBun.file.WriteBundleToFile(outBundlePath);
-        mgr.UnloadAll();
+        // Write the bundle
+        ctx.SceneBundleFileInstance.file.WriteBundleToFile(repackingParams.OutBundlePath);
     }
 }

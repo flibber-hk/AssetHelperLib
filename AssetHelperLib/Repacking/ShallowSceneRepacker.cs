@@ -1,12 +1,16 @@
-﻿using AssetsTools.NET;
+﻿// disabled due to rework
+#if false
+
+using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using AssetHelperLib.Util;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using AssetHelperLib.BundleTools;
 
-namespace AssetHelperLib.BundleTools.Repacking;
+namespace AssetHelperLib.Repacking;
 
 /// <summary>
 /// Repacker that creates a shallow bundle; that is, a bundle with no objects but with the metadata to load
@@ -188,3 +192,5 @@ public class ShallowSceneRepacker : SceneRepacker
         mgr.UnloadAll();
     }
 }
+
+#endif
