@@ -217,7 +217,7 @@ public class StrippedSceneRepacker : SceneRepacker
             }
 
             int locRedirect = ctx.SceneAssetsManager.Redirect(ctx.MainAssetsFileInstance, toMove, 1, newOneAssetPathId);  // Just in case
-            Logging.LogInfo($"Redirected {redirectCount} references plus {locRedirect} self-references");
+            Logging.LogDebug($"Redirected {redirectCount} references plus {locRedirect} self-references");
         }
 
         // Move updated internal bundle into the main assets file

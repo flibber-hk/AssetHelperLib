@@ -27,4 +27,11 @@ public static class Logging
     public static event Action<string>? OnLogError;
 
     internal static void LogError(string message) => OnLogError?.Invoke(message);
+
+    /// <summary>
+    /// On logging a "DEBUG" level message.
+    /// </summary>
+    public static event Action<string>? OnLogDebug;
+
+    internal static void LogDebug(string message) => OnLogDebug?.Invoke(message);
 }
