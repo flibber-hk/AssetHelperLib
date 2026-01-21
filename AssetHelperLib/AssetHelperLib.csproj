@@ -18,6 +18,7 @@
     <PackageId>AssetHelperLib</PackageId>
     <RepositoryUrl>https://github.com/flibber-hk/AssetHelperLib</RepositoryUrl>
     <Description>Scene Asset repacking library built upon AssetsTools.NET.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
