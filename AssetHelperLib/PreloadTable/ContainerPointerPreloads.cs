@@ -1,4 +1,5 @@
 ﻿using AssetHelperLib.BundleTools;
+using AssetHelperLib.IO;
 using AssetHelperLib.Repacking;
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
@@ -30,9 +31,9 @@ public sealed class ContainerPointerPreloadsBundleData
     public static ContainerPointerPreloadsBundleData FromFile(string bundlePath)
     {
         AssetsManager mgr = BundleUtils.CreateDefaultManager();
-        
-        using MemoryStream ms = new(File.ReadAllBytes(bundlePath));
-        BundleFileInstance bunInst = mgr.LoadBundleFile(ms, bundlePath);
+
+        using RentedFileArray rfa = new(bundlePath);
+        BundleFileInstance bunInst = mgr.LoadBundleFile(rfa.Stream, bundlePath);
         AssetsFileInstance afi = mgr.LoadAssetsFileFromBundle(bunInst, 0);
 
         AssetTypeValueField iBundle = mgr.GetBaseField(afi, 1);  // Internal bundle always at pathid = 1 for non-scene bundles
