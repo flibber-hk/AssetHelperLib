@@ -1,4 +1,5 @@
 ﻿using AssetHelperLib.BundleTools;
+using AssetHelperLib.IO;
 using AssetsTools.NET.Extra;
 using System;
 using System.IO;
@@ -82,8 +83,8 @@ public abstract class SceneRepacker
 
         AssetsManager mgr = BundleUtils.CreateDefaultManager();
 
-        using MemoryStream ms = new(File.ReadAllBytes(repackingParams.SceneBundlePath));
-        BundleFileInstance sceneBun = mgr.LoadBundleFile(ms, repackingParams.SceneBundlePath);
+        using RentedFileArray rfa = new(repackingParams.SceneBundlePath);
+        BundleFileInstance sceneBun = mgr.LoadBundleFile(rfa.Stream, repackingParams.SceneBundlePath);
 
         if (!mgr.TryFindAssetsFiles(sceneBun, out BundleUtils.SceneBundleInfo sceneBundleInfo))
         {
