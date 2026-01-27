@@ -8,6 +8,9 @@ namespace AssetHelperLib.IO;
 /// <summary>
 /// Class representing a file in memory that is backed by an array rented from
 /// a <see cref="ArrayPool{T}"/>.
+/// 
+/// This instance MUST be disposed, either manually or via the <see langword="using"/> keyword,
+/// when it is no longer in use.
 /// </summary>
 /// <remarks>
 /// Not putting the file into memory can cause massive performance hits because AssetsTools.NET
