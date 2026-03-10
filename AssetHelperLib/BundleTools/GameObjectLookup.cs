@@ -1,4 +1,5 @@
-﻿using AssetsTools.NET;
+﻿using AssetHelperLib.Extensions;
+using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using System.Collections;
 using System.Collections.Generic;
@@ -22,11 +23,11 @@ public class GameObjectLookup : IEnumerable<GameObjectLookup.GameObjectInfo>
     /// <param name="ParentPathId">The path ID of the parent transform, or 0 if it is a root game object.</param>
     public record GameObjectInfo(long GameObjectPathId, long TransformPathId, string GameObjectName, long ParentPathId);
 
-    private readonly Dictionary<string, GameObjectInfo> _fromName;
+    private readonly Dictionary<string, List<GameObjectInfo>> _fromName;
     private readonly Dictionary<long, GameObjectInfo> _fromGameObject;
     private readonly Dictionary<long, GameObjectInfo> _fromTransform;
 
-    private GameObjectLookup(Dictionary<string, GameObjectInfo> fromName, Dictionary<long, GameObjectInfo> fromGameObject, Dictionary<long, GameObjectInfo> fromTransform)
+    private GameObjectLookup(Dictionary<string, List<GameObjectInfo>> fromName, Dictionary<long, GameObjectInfo> fromGameObject, Dictionary<long, GameObjectInfo> fromTransform)
     {
         _fromName = fromName;
         _fromGameObject = fromGameObject;
@@ -40,13 +41,13 @@ public class GameObjectLookup : IEnumerable<GameObjectLookup.GameObjectInfo>
     /// <returns></returns>
     public static GameObjectLookup CreateFromInfos(IEnumerable<GameObjectInfo> infos)
     {
-        Dictionary<string, GameObjectInfo> fromName = [];
+        Dictionary<string, List<GameObjectInfo>> fromName = [];
         Dictionary<long, GameObjectInfo> fromGameObject = [];
         Dictionary<long, GameObjectInfo> fromTransform = [];
 
         foreach (GameObjectInfo info in infos)
         {
-            fromName[info.GameObjectName] = info;
+            fromName.AddEntry(info.GameObjectName, info);
             fromGameObject[info.GameObjectPathId] = info;
             fromTransform[info.TransformPathId] = info;
         }
@@ -118,7 +119,7 @@ public class GameObjectLookup : IEnumerable<GameObjectLookup.GameObjectInfo>
         return CreateFromInfos(fromTransformLookup.Values);
     }
 
-    private bool TryGet<T>(T key, Dictionary<T, GameObjectInfo> lookupDict, [MaybeNullWhen(false)] out GameObjectInfo info)
+    private bool TryGet<TKey, TValue>(TKey key, Dictionary<TKey, TValue> lookupDict, [MaybeNullWhen(false)] out TValue info)
     {
         return lookupDict.TryGetValue(key, out info);
     }
@@ -144,7 +145,7 @@ public class GameObjectLookup : IEnumerable<GameObjectLookup.GameObjectInfo>
     /// Get the <see cref="GameObjectInfo"/> corresponding to the given game object name (given in the hierarchy).
     /// </summary>
     /// <exception cref="KeyNotFoundException">Raised if the key was not found.</exception>
-    public GameObjectInfo LookupName(string name) => TryGet(name, _fromName, out GameObjectInfo? info)
+    public List<GameObjectInfo> LookupName(string name) => TryGet(name, _fromName, out List<GameObjectInfo>? info)
         ? info
         : throw new KeyNotFoundException($"Did not find name {name}");
 
@@ -170,7 +171,8 @@ public class GameObjectLookup : IEnumerable<GameObjectLookup.GameObjectInfo>
     /// <param name="name">The name (in hierarchy).</param>
     /// <param name="info">The info if found; undefined if not.</param>
     /// <returns>True or false depending on if the key was found.</returns>
-    public bool TryLookupName(string name, [MaybeNullWhen(false)] out GameObjectInfo info) => TryGet(name, _fromName, out info);
+    public bool TryLookupName(string name, [MaybeNullWhen(false)] out List<GameObjectInfo> info) 
+        => TryGet(name, _fromName, out info);
 
     /// <summary>
     /// Get an enumerator over the GameObjectInfos covered by this instance.

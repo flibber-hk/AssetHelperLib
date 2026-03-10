@@ -46,10 +46,14 @@ public class StrippedSceneRepacker : SceneRepacker
 
         foreach (string objName in objectNames)
         {
-            if (ctx.GameObjLookup.TryLookupName(objName, out GameObjectInfo? info))
+            if (ctx.GameObjLookup.TryLookupName(objName, out List<GameObjectInfo>? infos))
             {
-                includedPathIds.Add(info.GameObjectPathId);
-                includedPathIds.UnionWith(ctx.AssetDeps.FindBundleDeps(info.GameObjectPathId).InternalPaths);
+                Logging.LogInfo($"Found {infos.Count} assets for {objName} in {repackingParams.SceneBundlePath}");
+                foreach (GameObjectInfo info in infos)
+                {
+                    includedPathIds.Add(info.GameObjectPathId);
+                    includedPathIds.UnionWith(ctx.AssetDeps.FindBundleDeps(info.GameObjectPathId).InternalPaths);
+                }
             }
             else
             {
@@ -122,7 +126,7 @@ public class StrippedSceneRepacker : SceneRepacker
                 continue;
             }
 
-            if (!ctx.GameObjLookup.TryLookupName(parentName, out GameObjectInfo? parentInfo))
+            if (!ctx.GameObjLookup.TryLookupTransfrom(current.ParentPathId, out GameObjectInfo? parentInfo))
             {
                 Logging.LogWarning($"Unexpectedly failed to find {parentName} from {current.GameObjectName}");
                 continue;
@@ -157,34 +161,37 @@ public class StrippedSceneRepacker : SceneRepacker
 
         foreach (string containerGo in includedContainerGos)
         {
-            GameObjectInfo cgInfo = ctx.GameObjLookup.LookupName(containerGo);
-            long cgPathId = cgInfo.GameObjectPathId;
-
-            HashSet<PPtrInfo> deps = [];
-            _preloadResolver.BuildPreloadTable(cgPathId, ctx, ref deps);
-
-            int start = preloadPtrs.Count;
-
-            foreach (PPtrInfo info in deps)
+            List<GameObjectInfo> cgInfos = ctx.GameObjLookup.LookupName(containerGo);
+            foreach (GameObjectInfo cgInfo in cgInfos)
             {
-                AssetTypeValueField depPtr = ValueBuilder.DefaultValueFieldFromArrayTemplate(iBundleData["m_PreloadTable.Array"]);
-                depPtr["m_FileID"].AsInt = info.fileId;
-                depPtr["m_PathID"].AsLong = info.pathId;
-                preloadPtrs.Add(depPtr);
+                long cgPathId = cgInfo.GameObjectPathId;
+
+                HashSet<PPtrInfo> deps = [];
+                _preloadResolver.BuildPreloadTable(cgPathId, ctx, ref deps);
+
+                int start = preloadPtrs.Count;
+
+                foreach (PPtrInfo info in deps)
+                {
+                    AssetTypeValueField depPtr = ValueBuilder.DefaultValueFieldFromArrayTemplate(iBundleData["m_PreloadTable.Array"]);
+                    depPtr["m_FileID"].AsInt = info.fileId;
+                    depPtr["m_PathID"].AsLong = info.pathId;
+                    preloadPtrs.Add(depPtr);
+                }
+
+                int count = preloadPtrs.Count - start;
+
+                string containerPath = $"{repackingParams.ContainerPrefix}/{cgInfo.TransformPathId}/{containerGo}.prefab";
+                containerPaths[containerPath] = containerGo;
+
+                AssetTypeValueField newChild = ValueBuilder.DefaultValueFieldFromArrayTemplate(iBundleData["m_Container.Array"]);
+                newChild["first"].AsString = containerPath;
+                newChild["second.preloadIndex"].AsInt = start;
+                newChild["second.preloadSize"].AsInt = count;
+                newChild["second.asset.m_FileID"].AsInt = 0;
+                newChild["second.asset.m_PathID"].AsLong = updatedPathId(cgInfo.GameObjectPathId);
+                newChildren.Add(newChild);
             }
-
-            int count = preloadPtrs.Count - start;
-
-            string containerPath = $"{repackingParams.ContainerPrefix}/{containerGo}.prefab";
-            containerPaths[containerPath] = containerGo;
-
-            AssetTypeValueField newChild = ValueBuilder.DefaultValueFieldFromArrayTemplate(iBundleData["m_Container.Array"]);
-            newChild["first"].AsString = containerPath;
-            newChild["second.preloadIndex"].AsInt = start;
-            newChild["second.preloadSize"].AsInt = count;
-            newChild["second.asset.m_FileID"].AsInt = 0;
-            newChild["second.asset.m_PathID"].AsLong = updatedPathId(cgInfo.GameObjectPathId);
-            newChildren.Add(newChild);
         }
 
         iBundleData["m_PreloadTable.Array"].Children.Clear();
