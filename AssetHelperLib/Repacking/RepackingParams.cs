@@ -21,6 +21,7 @@ public record RepackingParams
 
     /// <summary>
     /// Prefix to use for asset paths in the container of this bundle.
+    /// Container paths will be of the form `{ContainerPrefix}/{transformPathId}/{GameObjectPath}.prefab`.
     /// </summary>
     public required string ContainerPrefix { get; set; }
 
