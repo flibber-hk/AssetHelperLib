@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace AssetHelperLib.Repacking;
 
@@ -29,4 +30,12 @@ public record RepackingParams
     /// File location for the repacked bundle.
     /// </summary>
     public required string OutBundlePath { get; set; }
+
+    /// <summary>
+    /// Callback invoked after the repacked bundle is written but before the scene
+    /// bundle is unloaded.
+    /// 
+    /// This is commonly used to extract metadata from the repacking procedure.
+    /// </summary>
+    public Action<RepackingContext, RepackedBundleData>? LateCallback { get; set; }
 }

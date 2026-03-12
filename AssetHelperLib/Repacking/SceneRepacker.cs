@@ -2,7 +2,6 @@
 using AssetHelperLib.IO;
 using AssetsTools.NET.Extra;
 using System;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -104,6 +103,8 @@ public abstract class SceneRepacker
         };
 
         Run(ctx, repackingParams, outData);
+
+        repackingParams.LateCallback?.Invoke(ctx, outData);
 
         mgr.UnloadAll();
     }
