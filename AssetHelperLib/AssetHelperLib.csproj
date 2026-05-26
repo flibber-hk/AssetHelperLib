@@ -23,7 +23,7 @@
 
   <ItemGroup>
     <PackageReference Include="AssetsTools.NET" Version="3.0.4" />
-    <PackageReference Include="PolySharp" Version="1.15.0">
+    <PackageReference Include="PolySharp" Version="1.16.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
